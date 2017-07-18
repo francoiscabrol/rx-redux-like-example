@@ -35,21 +35,38 @@ const fakeFetch = async () => {
       status: 200
     }
   }
+};
+
+function cancelable(action) {
+  const uuid = Random.nextInt();
+  return state => {
+    action({...state, async: R.add(id, state.async)}, () => { return R.contains(id, state.async); });
+    return uuid;
+  }
 }
 
 const actions = {
-  updateNameStart: name => state => {
+  updateNameStart: name => cancelable((state, isCancel) => {
     fakeFetch().then(function(response) {
       if (response.status >= 400) {
         store.dispatch(actions.updateNameFailure('Impossible to add the name'))
       }
-      store.dispatch(actions.updateNameSuccess(name))
+      if (isCancel()) {
+        store.dispatch(actions.updateNameSuccess(name))
+      }
     });
 
     return {
       ...state,
       loading: true
     };
+  }),
+  cancelAsyncAction: id => state => {
+    return {
+      ...state,
+      async: R.omit(id, state.async),
+      error
+    }
   },
   updateNameFailure: error => state => {
     return {
@@ -65,7 +82,7 @@ const actions = {
       name
     };
   }
-}
+};
 
 // Example action function
 const changeName = name => store.dispatch(actions.updateNameStart(name));
@@ -80,7 +97,7 @@ const App = (props) => {
       <button onClick={() => changeName('Sally')} >Sally</button>
     </div>
   );
-}
+};
 
 // subscribe and render the view
 const dom =  document.getElementById('root');
