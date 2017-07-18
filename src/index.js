@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import Rx from 'rxjs/Rx';
+import R from 'ramda';
 
 class Store {
 
@@ -26,66 +27,67 @@ class Store {
   }
 }
 
-const store = new Store({ name: 'Johnny' });
+const store = new Store({ name: 'Johnny', async: [] });
+
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 const fakeFetch = async () => {
-  console.log('start fetching');
+  console.log('start fetching, it take 500 milliseconds');
+  await wait(500);
+
   return {
-    response: {
-      status: 200
-    }
+      response: {
+          status: 200
+      }
   }
 };
 
-function cancelable(action) {
-  const uuid = Random.nextInt();
-  return state => {
-    action({...state, async: R.add(id, state.async)}, () => { return R.contains(id, state.async); });
-    return uuid;
-  }
-}
-
 const actions = {
-  updateNameStart: name => cancelable((state, isCancel) => {
+  updateNameStart: name => state => {
     fakeFetch().then(function(response) {
       if (response.status >= 400) {
         store.dispatch(actions.updateNameFailure('Impossible to add the name'))
       }
-      if (isCancel()) {
-        store.dispatch(actions.updateNameSuccess(name))
-      }
+      store.dispatch(actions.updateNameSuccess(name))
     });
 
     return {
       ...state,
-      loading: true
+      loading: true,
+      async: R.append('updateName', state.async)
     };
-  }),
-  cancelAsyncAction: id => state => {
+  },
+  updateNameCancel: _ => state => {
     return {
       ...state,
-      async: R.omit(id, state.async),
-      error
+      loading: false,
+      async: R.remove('updateName', state.async)
     }
   },
   updateNameFailure: error => state => {
     return {
       ...state,
       loading: false,
+      async: R.remove('updateName', state.async),
       error
     }
   },
   updateNameSuccess: name => state => {
-    return {
-      ...state,
-      loading: false,
-      name
-    };
+    if (R.contains('updateName', state.async)) {
+      return {
+          ...state,
+          loading: false,
+          async: R.remove('updateName', state.async),
+          name
+      };
+    }
+    return state;
   }
 };
 
 // Example action function
 const changeName = name => store.dispatch(actions.updateNameStart(name));
+const cancel = name => store.dispatch(actions.updateNameCancel());
 
 // React view component
 const App = (props) => {
@@ -95,6 +97,7 @@ const App = (props) => {
       <h1>{ name }</h1>
       <button onClick={() => changeName('Harry')} >Harry</button>
       <button onClick={() => changeName('Sally')} >Sally</button>
+      <button onClick={() => cancel()} >Cancel</button>
     </div>
   );
 };
