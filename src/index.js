@@ -1,6 +1,64 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
+import PropTypes from 'prop-types';
 import Rx from 'rxjs/Rx';
+import R from 'ramda';
+
+class Provider extends React.Component {
+  getChildContext() {
+    return {
+      store: this.props.store
+    };
+  }
+  render() {
+    return this.props.children;
+  }
+}
+
+Provider.childContextTypes = {
+  store: PropTypes.object
+};
+
+function connect(mapStateToProps = () => ({}), mapDispatchToProps = () => ({})) {
+  return Component => {
+    class Connected extends React.Component {
+      onStoreOrPropsChange(props, stateProps = {}) {
+        const {store} = this.context;
+        const dispatchProps = mapDispatchToProps(store.dispatch, props);
+        this.setState({
+          ...stateProps,
+          ...dispatchProps
+        });
+      }
+      componentWillMount() {
+        const {store} = this.context;
+        const statePropsObservable = store.store$.map(state => mapStateToProps(state, this.props)).filter(stateProps => {
+          if (this.state === null) return true
+          const currentState = R.pick(Object.keys(stateProps), this.state);
+          return !R.equals(currentState, stateProps)
+        });
+
+        this.unsubscribe = statePropsObservable
+          .subscribe((stateProps) => {
+            console.log("updated Connect state:", stateProps);
+            return this.onStoreOrPropsChange(this.props, stateProps);
+          });
+      }
+      componentWillUnmount() {
+        this.unsubscribe();
+      }
+      render() {
+        return <Component {...this.props} {...this.state}/>;
+      }
+    }
+
+    Connected.contextTypes = {
+      store: PropTypes.object
+    };
+
+    return Connected;
+  };
+};
 
 class Store {
 
@@ -13,8 +71,12 @@ class Store {
 
     // Reduxification
     this.store$ = this.action$
-        .startWith(initState)
-        .scan(reducer);
+      .startWith(initState)
+      .scan(reducer);
+  }
+
+  getState() {
+    return this.store$;
   }
 
   dispatch(action) {
@@ -68,20 +130,31 @@ const actions = {
 }
 
 // Example action function
-const changeName = name => store.dispatch(actions.updateNameStart(name));
+const onChangeName = name => store.dispatch(actions.updateNameStart(name));
 
 // React view component
-const App = (props) => {
-  const { name } = props;
+const DynamicName = (props) => {
+  const { name, test } = props;
   return (
     <div>
       <h1>{ name }</h1>
-      <button onClick={() => changeName('Harry')} >Harry</button>
-      <button onClick={() => changeName('Sally')} >Sally</button>
+      <h2>{ test }</h2>
+      <button onClick={() => onChangeName('Harry')} >Harry</button>
+      <button onClick={() => onChangeName('Sally')} >Sally</button>
     </div>
   );
 }
 
 // subscribe and render the view
 const dom =  document.getElementById('root');
-store.subscribe(state => ReactDOM.render(<App {...state} />, dom));
+const ConnectedApp = connect((state) => {
+  return {
+    name: state.name
+  }
+}, (dispatch) => {
+  return {
+    onChangeName: name => dispatch(actions.updateNameStart(name))
+  }
+})(DynamicName);
+
+ReactDOM.render(<Provider store={ store }><ConnectedApp test="ahah"></ConnectedApp></Provider>, dom);
