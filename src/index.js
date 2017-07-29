@@ -24,7 +24,7 @@ function connect(mapStateToProps = () => ({}), mapDispatchToProps = () => ({})) 
     class Connected extends React.Component {
       onStoreOrPropsChange(props, stateProps = {}) {
         const {store} = this.context;
-        const dispatchProps = mapDispatchToProps(store.dispatch, props);
+        const dispatchProps = mapDispatchToProps((action) => store.dispatch(action), props);
         this.setState({
           ...stateProps,
           ...dispatchProps
@@ -40,7 +40,7 @@ function connect(mapStateToProps = () => ({}), mapDispatchToProps = () => ({})) 
 
         this.unsubscribe = statePropsObservable
           .subscribe((stateProps) => {
-            console.log("updated Connect state:", stateProps);
+            console.log("Re-render the connected component with new props:", stateProps);
             return this.onStoreOrPropsChange(this.props, stateProps);
           });
       }
@@ -60,27 +60,64 @@ function connect(mapStateToProps = () => ({}), mapDispatchToProps = () => ({})) 
   };
 };
 
+
+// Redux reducer
+const reducer = (state, action) => {
+  console.log('Action:', action)
+  switch(action.type) {
+    case 'UPDATE_NAME_START': {
+      return {
+        ...state,
+        loading: true
+      };
+    }
+    case 'UPDATE_NAME_FAILURE': {
+      return {
+        ...state,
+        loading: false,
+        error: action.error
+      }
+    }
+    case 'UPDATE_NAME_SUCCESS': {
+      return {
+        ...state,
+        loading: false,
+        name: action.name
+      };
+    }
+    default: {
+      return state;
+    }
+  }
+}
+
 class Store {
 
-  constructor(initState) {
+  constructor(initState, reducer, middleware) {
     // create our stream as a subject so arbitrary data can be sent on the stream
     this.action$ = new Rx.Subject();
-
-    // Redux reducer
-    const reducer = (state, action) => action(state);
 
     // Reduxification
     this.store$ = this.action$
       .startWith(initState)
       .scan(reducer);
+
+    this.middleware = middleware;
+
+    this.coreDispatch = (action) => {
+      this.action$.next(action);
+    }
+
+    if (this.middleware) {
+      const dispatch = action => this.dispatch(action);
+      this.dispatch = this.middleware({dispatch, getState: this.getState})(this.coreDispatch);
+    } else {
+      this.dispatch = this.coreDispatch;
+    }
   }
 
   getState() {
-    return this.store$;
-  }
-
-  dispatch(action) {
-    this.action$.next(action);
+    return this.store$; // should be synchronous
   }
 
   subscribe(rendererCallback) {
@@ -88,10 +125,16 @@ class Store {
   }
 }
 
-const store = new Store({ name: 'Johnny' });
+const thunkMiddleware = ({dispatch, getState}) => next => action => {
+  if (typeof action === 'function') {
+    return action({dispatch, getState});
+  }
+  return next(action);
+};
+
+const store = new Store({ name: 'Johnny' }, reducer, thunkMiddleware);
 
 const fakeFetch = async () => {
-  console.log('start fetching');
   return {
     response: {
       status: 200
@@ -99,50 +142,27 @@ const fakeFetch = async () => {
   }
 }
 
-const actions = {
-  updateNameStart: name => state => {
-    fakeFetch().then(function(response) {
-      if (response.status >= 400) {
-        store.dispatch(actions.updateNameFailure('Impossible to add the name'))
-      }
-      store.dispatch(actions.updateNameSuccess(name))
-    });
-
-    return {
-      ...state,
-      loading: true
-    };
-  },
-  updateNameFailure: error => state => {
-    return {
-      ...state,
-      loading: false,
-      error
-    }
-  },
-  updateNameSuccess: name => state => {
-    return {
-      ...state,
-      loading: false,
-      name
-    };
-  }
-}
-
-// Example action function
-const onChangeName = name => store.dispatch(actions.updateNameStart(name));
-
 // React view component
 const DynamicName = (props) => {
-  const { name, test } = props;
+  const { name, subtitle, onChangeName } = props;
   return (
     <div>
       <h1>{ name }</h1>
-      <h2>{ test }</h2>
+      <h2>{ subtitle }</h2>
       <button onClick={() => onChangeName('Harry')} >Harry</button>
       <button onClick={() => onChangeName('Sally')} >Sally</button>
     </div>
   );
+}
+
+const updateName = name => ({ dispatch }) => {
+  dispatch({type: 'UPDATE_NAME_START'});
+  fakeFetch().then(function(response) {
+    if (response.status >= 400) {
+      dispatch({type: 'UPDATE_NAME_FAILURE', error: 'Impossible to add the name'})
+    }
+    dispatch({type: 'UPDATE_NAME_SUCCESS', name})
+  });
 }
 
 // subscribe and render the view
@@ -153,8 +173,8 @@ const ConnectedApp = connect((state) => {
   }
 }, (dispatch) => {
   return {
-    onChangeName: name => dispatch(actions.updateNameStart(name))
+    onChangeName: name => dispatch(updateName(name))
   }
 })(DynamicName);
 
-ReactDOM.render(<Provider store={ store }><ConnectedApp test="ahah"></ConnectedApp></Provider>, dom);
+ReactDOM.render(<Provider store={ store }><ConnectedApp subtitle="Un good test"></ConnectedApp></Provider>, dom);
