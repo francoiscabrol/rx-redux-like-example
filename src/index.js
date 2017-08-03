@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import PropTypes from 'prop-types';
 import Rx from 'rxjs/Rx';
+import { ajax } from 'rxjs/observable/dom/ajax';
 import R from 'ramda';
 
 class Provider extends React.Component {
@@ -94,13 +95,24 @@ const reducer = (state, action) => {
 class Store {
 
   constructor(initState, reducer, middleware) {
+    const withDevTools = typeof window !== 'undefined' && window.devToolsExtension;
+
+    if (withDevTools)
+      this.devTools = window.devToolsExtension.connect();
+
     // create our stream as a subject so arbitrary data can be sent on the stream
     this.action$ = new Rx.Subject();
 
     // Reduxification
     this.store$ = this.action$
       .startWith(initState)
-      .scan(reducer);
+      .scan((state, action) => {
+        const newState = reducer(state, action);
+        console.log('a', action)
+        if (withDevTools)
+          this.devTools.send(action.type, newState);
+        return newState;
+      });
 
     this.middleware = middleware;
 
@@ -110,7 +122,8 @@ class Store {
 
     if (this.middleware) {
       const dispatch = action => this.dispatch(action);
-      this.dispatch = this.middleware({dispatch, getState: this.getState})(this.coreDispatch);
+      const cancel = (cancelType) => this.action$.filter(({ type }) => type === cancelType);
+      this.dispatch = this.middleware({dispatch, getState: this.getState, cancel})(this.coreDispatch);
     } else {
       this.dispatch = this.coreDispatch;
     }
@@ -125,16 +138,21 @@ class Store {
   }
 }
 
-const thunkMiddleware = ({dispatch, getState}) => next => action => {
+const thunkMiddleware = ({dispatch, getState, cancel}) => next => action => {
   if (typeof action === 'function') {
-    return action({dispatch, getState});
+    return action({dispatch, getState, cancel});
   }
   return next(action);
 };
 
 const store = new Store({ name: 'Johnny' }, reducer, thunkMiddleware);
 
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+
 const fakeFetch = async () => {
+  console.log('start fetching, it take 500 milliseconds');
+  await wait(500);
+
   return {
     response: {
       status: 200
@@ -144,25 +162,31 @@ const fakeFetch = async () => {
 
 // React view component
 const DynamicName = (props) => {
-  const { name, subtitle, onChangeName } = props;
+  const { name, subtitle, onChangeName, onCancelChangeName } = props;
   return (
     <div>
       <h1>{ name }</h1>
       <h2>{ subtitle }</h2>
       <button onClick={() => onChangeName('Harry')} >Harry</button>
       <button onClick={() => onChangeName('Sally')} >Sally</button>
+      <button onClick={() => onCancelChangeName()}>Cancel</button>
     </div>
   );
 }
 
-const updateName = name => ({ dispatch }) => {
+const updateName = name => ({ dispatch, cancel }) => {
   dispatch({type: 'UPDATE_NAME_START'});
-  fakeFetch().then(function(response) {
-    if (response.status >= 400) {
-      dispatch({type: 'UPDATE_NAME_FAILURE', error: 'Impossible to add the name'})
-    }
-    dispatch({type: 'UPDATE_NAME_SUCCESS', name})
-  });
+  Rx.Observable.fromPromise(fakeFetch())
+    .takeUntil(cancel('UPDATE_NAME_CANCEL'))
+    .subscribe(response => {
+      if (response.status >= 400) {
+        dispatch({type: 'UPDATE_NAME_FAILURE', error: 'Impossible to add the name'})
+      }
+      dispatch({type: 'UPDATE_NAME_SUCCESS', name})
+    }, error => {
+        console.warn(error);
+        dispatch({type: 'UPDATE_NAME_FAILURE', error: 'Impossible to add the name'});
+    })
 }
 
 // subscribe and render the view
@@ -173,7 +197,8 @@ const ConnectedApp = connect((state) => {
   }
 }, (dispatch) => {
   return {
-    onChangeName: name => dispatch(updateName(name))
+    onChangeName: name => dispatch(updateName(name)),
+    onCancelChangeName: () => dispatch({ type: 'UPDATE_NAME_CANCEL' })
   }
 })(DynamicName);
 
