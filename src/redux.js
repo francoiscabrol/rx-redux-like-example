@@ -75,7 +75,6 @@ export class Store {
       .startWith(initState)
       .scan((state, action) => {
         const newState = reducer(state, action);
-        console.log('a', action)
         if (withDevTools)
           this.devTools.send(action.type, newState);
         return newState;
