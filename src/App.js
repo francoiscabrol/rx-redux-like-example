@@ -1,3 +1,5 @@
+// @flow
+
 import React from "react";
 import { connect } from "./redux";
 import { updateName, cancelUpdateName } from "./reducer";
