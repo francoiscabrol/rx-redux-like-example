@@ -8,11 +8,11 @@ const UPDATE_NAME_SUCCESS = "UPDATE_NAME_SUCCESS";
 
 export const cancelUpdateName = () => ({ type: UPDATE_NAME_CANCEL });
 
-export const updateName = name => ({ dispatch, cancel }) => {
+export const updateName = name => ({ dispatch, watch }) => {
   dispatch({ type: UPDATE_NAME_START });
   Rx.Observable
     .fromPromise(api.fakeFetch())
-    .takeUntil(cancel(UPDATE_NAME_CANCEL))
+    .takeUntil(watch(UPDATE_NAME_CANCEL))
     .subscribe(
       response => {
         if (response.status >= 400) {

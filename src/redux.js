@@ -79,10 +79,11 @@ export class Store {
     this.store$ = this.action$.startWith(initState).scan((state, action) => {
       const newState = reducer(state, action);
       if (withDevTools) this.devTools.send(action.type, newState);
+      this.lastState = newState;
       return newState;
     });
 
-    this.store$.subscribe(state => this.state = state)
+    this.lastState = undefined ;
 
     this.middleware = middleware;
 
@@ -91,21 +92,21 @@ export class Store {
     };
 
     if (this.middleware) {
-      const dispatch = action => this.dispatch(action);
-      const cancel = cancelType =>
-        this.action$.filter(({ type }) => type === cancelType);
-      this.dispatch = this.middleware({
-        dispatch,
-        getState: this.getState,
-        cancel
-      })(this.coreDispatch);
+      const store = this
+      this.dispatchImpl = this.middleware(store)(this.coreDispatch);
     } else {
-      this.dispatch = this.coreDispatch;
+      this.dispatchImpl = this.coreDispatch;
     }
   }
 
+  watch = actionType => this.action$.filter(({ type }) => type === actionType);
+
+  dispatch = action => {
+    this.dispatchImpl(action)
+  }
+
   getState = () => {
-    return this.state; // should be synchronous
+    return this.lastState; // should be synchronous
   }
 
   subscribe(rendererCallback) {
@@ -116,13 +117,26 @@ export class Store {
 export const thunkMiddleware = ({
   dispatch,
   getState,
-  cancel
+  watch
 }) => next => action => {
   if (typeof action === "function") {
-    return action({ dispatch, getState, cancel });
+    return action({ dispatch, getState, watch });
   }
   return next(action);
 };
+
+export const createThunkActionMiddleware = thunkActions => {
+  return ({
+    dispatch
+  }) => next => action => {
+    if (typeof action === 'object' && typeof action.type === 'string') {
+      const thunkAction = R.find(R.propEq("type", action.type))(thunkActions);
+      if (thunkAction) {
+        thunkAction.thunk(action);
+      }
+    }
+  };
+}
 
 export const applyMiddleware = (...middlewares) => store => {
   if (middlewares.length === 0) {
