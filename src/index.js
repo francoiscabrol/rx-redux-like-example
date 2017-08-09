@@ -5,9 +5,11 @@ import reducer from "./reducer";
 import App from "./App";
 
 const logger = ({ getState }) => next => action => {
-  console.log("dispatching", action);
+  console.groupCollapsed("dispatching action " + action.type);
+  console.log("action", action);
   let result = next(action);
   console.log("next state", getState());
+  console.groupEnd();
   return result;
 };
 
