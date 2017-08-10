@@ -126,15 +126,17 @@ export const thunkMiddleware = ({
 };
 
 export const createThunkActionMiddleware = thunkActions => {
-  return ({
-    dispatch
-  }) => next => action => {
+  return () => next => action => {
     if (typeof action === 'object' && typeof action.type === 'string') {
       const thunkAction = R.find(R.propEq("type", action.type))(thunkActions);
       if (thunkAction) {
-        thunkAction.thunk(action);
+        return next(thunkAction.thunk(action));
+      }
+      else {
+        return next(action)
       }
     }
+    return next(action)
   };
 }
 

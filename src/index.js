@@ -1,7 +1,8 @@
 import React from "react";
 import ReactDOM from "react-dom";
-import { Provider, Store, applyMiddleware, thunkMiddleware } from "./redux";
+import { Provider, Store, applyMiddleware, thunkMiddleware, createThunkActionMiddleware } from "./redux";
 import reducer from "./reducer";
+import thunkActions from './thunkActions';
 import App from "./App";
 
 const logger = ({ getState }) => next => action => {
@@ -13,7 +14,9 @@ const logger = ({ getState }) => next => action => {
   return result;
 };
 
-const middlewares = applyMiddleware(thunkMiddleware, logger);
+const thunkActionMiddleware = createThunkActionMiddleware(thunkActions);
+
+const middlewares = applyMiddleware(thunkActionMiddleware, thunkMiddleware, logger);
 
 const store = new Store({ name: "Johnny" }, reducer, middlewares);
 

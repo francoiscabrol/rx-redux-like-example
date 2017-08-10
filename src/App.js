@@ -2,7 +2,7 @@
 
 import React from "react";
 import { connect } from "./redux";
-import { updateName, cancelUpdateName } from "./reducer";
+import { updateName, cancelUpdateName } from "./actionCreators";
 
 // React view component
 const DynamicName = props => {
