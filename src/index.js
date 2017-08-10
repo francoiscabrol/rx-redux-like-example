@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom";
 import { Provider, Store, applyMiddleware, thunkMiddleware } from "./redux";
-import reducer from "./reducer";
+import reducer from "./reducers";
 import App from "./App";
 
 const logger = ({ getState }) => next => action => {
@@ -15,7 +15,7 @@ const logger = ({ getState }) => next => action => {
 
 const middlewares = applyMiddleware(thunkMiddleware, logger);
 
-const store = new Store({ name: "Johnny" }, reducer, middlewares);
+const store = new Store({ name: "Johnny", message: 'you never clicked' }, reducer, middlewares);
 
 const dom = document.getElementById("root");
 ReactDOM.render(

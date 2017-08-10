@@ -1,5 +1,5 @@
 import Rx from "rxjs/Rx";
-import api from "./api";
+import api from "./../api";
 
 const UPDATE_NAME_START = "UPDATE_NAME_START";
 const UPDATE_NAME_CANCEL = "UPDATE_NAME_CANCEL ";

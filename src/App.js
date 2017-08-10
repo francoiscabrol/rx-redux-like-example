@@ -2,11 +2,12 @@
 
 import React from "react";
 import { connect } from "./redux";
-import { updateName, cancelUpdateName } from "./reducer";
+import { updateName, cancelUpdateName } from "./reducers/name";
+import { showAlert } from "./reducers/message";
 
 // React view component
 const DynamicName = props => {
-  const { name, subtitle, onChangeName, onCancelChangeName } = props;
+  const { name, message, subtitle, onChangeName, onCancelChangeName, show } = props;
   return (
     <div>
       <h1>
@@ -15,6 +16,10 @@ const DynamicName = props => {
       <h2>
         {subtitle}
       </h2>
+      <h3>
+        {message}
+      </h3>
+      <button onClick={() => show("You clicked!")}>Click test</button>
       <button onClick={() => onChangeName("Harry")}>Harry</button>
       <button onClick={() => onChangeName("Sally")}>Sally</button>
       <button onClick={() => onCancelChangeName()}>Cancel</button>
@@ -25,11 +30,13 @@ const DynamicName = props => {
 const ConnectedApp = connect(
   state => {
     return {
-      name: state.name
+      name: state.name,
+      message: state.message
     };
   },
   dispatch => {
     return {
+      show: message => dispatch(showAlert(message)),
       onChangeName: name => dispatch(updateName(name)),
       onCancelChangeName: () => dispatch(cancelUpdateName())
     };
