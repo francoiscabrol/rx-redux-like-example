@@ -1,0 +1,35 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Welcome Welcome renders hello world 1`] = `
+<div>
+  <h1>
+    NoName
+  </h1>
+  <h2>
+    Un good test
+  </h2>
+  <h3>
+    you never clicked
+  </h3>
+  <button
+    onClick={[Function]}
+  >
+    Click test
+  </button>
+  <button
+    onClick={[Function]}
+  >
+    Harry
+  </button>
+  <button
+    onClick={[Function]}
+  >
+    Sally
+  </button>
+  <button
+    onClick={[Function]}
+  >
+    Cancel
+  </button>
+</div>
+`;

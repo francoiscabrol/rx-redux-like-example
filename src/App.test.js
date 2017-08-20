@@ -1,8 +1,17 @@
-import React from 'react';
-import ReactDOM from 'react-dom';
-import App from './App';
+import React from "react";
+import { Provider, Store, applyMiddleware, thunkMiddleware } from "./redux";
+import renderer from 'react-test-renderer';
+import reducer from "./reducers";
+import App from "./App";
 
-it('renders without crashing', () => {
-  const div = document.createElement('div');
-  ReactDOM.render(<App />, div);
+const message  = 'you never clicked'
+const store = new Store({ message: {value: message } }, reducer, thunkMiddleware);
+
+describe('Welcome', () => {
+  it('Welcome renders hello world', () => {
+    const app = renderer.create(<Provider store={store}>
+      <App subtitle="Un good test" />
+    </Provider>);
+    expect(app.toJSON()).toMatchSnapshot()
+  });
 });
