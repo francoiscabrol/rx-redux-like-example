@@ -1,6 +1,10 @@
 import Rx from "rxjs/Rx";
 import api from "./../api";
 
+const INITIAL_STATE = {
+  name: 'NoName'
+}
+
 const UPDATE_NAME_START = "UPDATE_NAME_START";
 const UPDATE_NAME_CANCEL = "UPDATE_NAME_CANCEL ";
 const UPDATE_NAME_FAILURE = "UPDATE_NAME_FAILURE";
@@ -34,7 +38,7 @@ export const updateName = name => ({ dispatch, watch }) => {
 };
 
 // Redux reducer
-const reducer = (state, action) => {
+const reducer = (state = INITIAL_STATE, action) => {
   switch (action.type) {
     case UPDATE_NAME_START: {
       return {

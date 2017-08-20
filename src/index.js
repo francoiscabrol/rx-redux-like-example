@@ -15,7 +15,7 @@ const logger = ({ getState }) => next => action => {
 
 const middlewares = applyMiddleware(thunkMiddleware, logger);
 
-const store = new Store({ name: "Johnny", message: 'you never clicked' }, reducer, middlewares);
+const store = new Store({ message: {value: 'you never clicked'} }, reducer, middlewares);
 
 const dom = document.getElementById("root");
 ReactDOM.render(

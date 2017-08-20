@@ -76,13 +76,14 @@ export class Store {
     this.action$ = new Rx.Subject();
 
     // Reduxification
-    this.store$ = this.action$.startWith(initState).scan((state, action) => {
+    const initial = reducer(initState, { type: '@init'})
+    this.store$ = this.action$.startWith(initial).scan((state, action) => {
       const newState = reducer(state, action);
       if (withDevTools) this.devTools.send(action.type, newState);
       this.lastState = newState;
       return newState;
     });
-
+    
     this.lastState = undefined ;
 
     this.middleware = middleware;
@@ -149,10 +150,10 @@ export const applyMiddleware = (...middlewares) => store => {
   return boundMiddlewares.reduce((a, b) => next => a(b(next)));
 };
 
-export function combineReducers(...reducers) {
-  return (previous, current) =>
-    reducers.reduce(
-      (p, r) => r(p, current),
-      previous
-    );
+export function combineReducers(reducers) {
+  return (state, action) => { 
+    const applyReducer = (reducer, reducerKey) => reducer(state[reducerKey], action)
+    const newState = R.mapObjIndexed(applyReducer, reducers)
+    return newState
+  }
 }

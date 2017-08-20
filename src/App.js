@@ -1,8 +1,6 @@
-// @flow
-
 import React from "react";
 import { connect } from "./redux";
-import { updateName, cancelUpdateName } from "./reducers/name";
+import { updateName, cancelUpdateName } from "./reducers/user";
 import { showAlert } from "./reducers/message";
 
 // React view component
@@ -30,8 +28,8 @@ const DynamicName = props => {
 const ConnectedApp = connect(
   state => {
     return {
-      name: state.name,
-      message: state.message
+      name: state.user.name,
+      message: state.message.value
     };
   },
   dispatch => {
